@@ -4,6 +4,7 @@ using ProcurandoApartamento.Domain.Services.Interfaces;
 using ProcurandoApartamento.Domain.Repositories.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using System.Linq;
+using System.Collections.Generic;
 
 namespace ProcurandoApartamento.Domain.Services
 {
@@ -45,26 +46,36 @@ namespace ProcurandoApartamento.Domain.Services
 
         public async Task<Apartamento> FindMelhorApartamento(string[] listOfEstabelecimentos)
         {
+            var listOfEstabelecimentosUpper = listOfEstabelecimentos.Select(s => s.ToUpper()).ToArray();
             var result = await _apartamentoRepository.QueryHelper()
-                .Filter(Apartamento => Apartamento.ApartamentoDisponivel == true && Apartamento.EstabelecimentoExiste == true && Apartamento.Estabelecimento == listOfEstabelecimentos[0]).GetAllAsync();
+                .Filter(apartamento => apartamento.ApartamentoDisponivel == true && apartamento.EstabelecimentoExiste == true && listOfEstabelecimentosUpper.Contains(apartamento.Estabelecimento))
+                .GetAllAsync();
 
-            if (result != null)
+            if (result != null && result.Any()) 
             {
                 Apartamento aparamentoMatch = new();
-
+                var quadra = 0;
                 if (result.Count() >= 2)
                 {
-                    var quadra = result.Max(Apartamento => Apartamento.Quadra);
+                   var  resultComDistinct = result.DistinctBy(x => x.Quadra).ToList();
+                    if ((result.ToList().Count) != (resultComDistinct).Count)
+                    { 
+                        var listAparamentoMatch = result.GroupBy(x => x.Quadra).Where(apartamento => apartamento.Count() > 1).ToList();
+                        var final = listAparamentoMatch.SelectMany(x => x);
+                        quadra = final.Max(Apartamento => Apartamento.Quadra);
+                        aparamentoMatch = (Apartamento)final.Find(x => x.Quadra == quadra);
+                        return aparamentoMatch;
+                    }
+                    quadra = result.Max(Apartamento => Apartamento.Quadra);
                     aparamentoMatch = (Apartamento)result.Find(x => x.Quadra == quadra);
-
                     return aparamentoMatch;
                 }
-                //aparamentoMatch = result.First();
-                return result.First();
-
+                aparamentoMatch = (result.ToArray()).First();
+                return aparamentoMatch;
             }
-            Apartamento teste = new();
-            return teste;
+            Apartamento apartamentoNaoEncontrado = new();
+            apartamentoNaoEncontrado.Estabelecimento = "Not found";
+            return apartamentoNaoEncontrado;
         }
 
     }

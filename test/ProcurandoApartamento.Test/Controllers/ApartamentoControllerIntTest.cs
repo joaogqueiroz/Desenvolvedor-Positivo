@@ -33,8 +33,8 @@ namespace ProcurandoApartamento.Test.Controllers
         private const bool DefaultApartamentoDisponivel = true;
         private const bool UpdatedApartamentoDisponivel = false;
 
-        private const string DefaultEstabelecimento = "AAAAAAAAAA";
-        private const string UpdatedEstabelecimento = "BBBBBBBBBB";
+        private const string DefaultEstabelecimento = "MERCADO";
+        private const string UpdatedEstabelecimento = "FARMACIA";
 
         private const bool DefaultEstabelecimentoExiste = true;
         private const bool UpdatedEstabelecimentoExiste = false;
@@ -133,6 +133,36 @@ namespace ProcurandoApartamento.Test.Controllers
             json.SelectTokens("$.apartamentoDisponivel").Should().Contain(DefaultApartamentoDisponivel);
             json.SelectTokens("$.estabelecimento").Should().Contain(DefaultEstabelecimento);
             json.SelectTokens("$.estabelecimentoExiste").Should().Contain(DefaultEstabelecimentoExiste);
+        }
+        [Theory]
+        [InlineData("listOfEstabelecimentos=MERCADO")]
+        [InlineData("listOfEstabelecimentos=ACADEMIA&listOfEstabelecimentos=MERCADO")]
+        [InlineData("listOfEstabelecimentos=ESCOLA&listOfEstabelecimentos=MERCADO&listOfEstabelecimentos=ACADEMIA")]
+        public async Task GetMelhorApartamento(string parameters)
+        {
+            // Initialize the database
+            await _apartamentoRepository.CreateOrUpdateAsync(_apartamento);
+            await _apartamentoRepository.SaveChangesAsync();
+
+            // Get the apartamento
+            var response = await _client.GetAsync($"/api/apartamentos/melhorapartamento?{parameters}");
+            response.StatusCode.Should().Be(HttpStatusCode.OK);
+            var json = JToken.Parse(await response.Content.ReadAsStringAsync());
+            json.SelectTokens("$.quadra").Should().NotBeNullOrEmpty();
+        }
+        [Theory]
+        [InlineData("listOfEstabelecimentos=AAAAAAAAAAAAAAAAAAA")]
+        [InlineData("listOfEstabelecimentos=AAAAAAAAAAAAAAAAAA&listOfEstabelecimentos=MERCADO1")]
+        [InlineData("listOfEstabelecimentos=123&listOfEstabelecimentos=345&listOfEstabelecimentos=aCademia4*")]
+        public async Task GetMelhorApartamentoNotFound(string parameters)
+        {
+            // Initialize the database
+            await _apartamentoRepository.CreateOrUpdateAsync(_apartamento);
+            await _apartamentoRepository.SaveChangesAsync();
+
+            // Get the apartamento
+            var response = await _client.GetAsync($"/api/apartamentos/melhorapartamento?{parameters}");
+            response.StatusCode.Should().Be(HttpStatusCode.NotFound);
         }
 
         [Fact]

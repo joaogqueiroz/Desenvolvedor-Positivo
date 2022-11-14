@@ -62,12 +62,21 @@ namespace ProcurandoApartamento.Controllers
             return ActionResultUtil.WrapOrNotFound(result);
         }
 
-        [HttpGet("MelhorApartamento")]
-        public async Task<string> GetMelhorApartamento([FromQuery] string[] listOfEstabelecimentos)
+        [HttpGet("melhorapartamento")]
+        public async Task<IActionResult> GetMelhorApartamento([FromQuery] string[] listOfEstabelecimentos)
         {
              _log.LogDebug($"REST request to get MelhorApartamento : {listOfEstabelecimentos}");
             var result = await _apartamentoService.FindMelhorApartamento(listOfEstabelecimentos);
-            return result.Quadra.ToString();
+
+            if(result.Estabelecimento != "Not found" && result != null)
+            {
+                //return new string ($"QUADRA:" + result.Quadra.ToString());
+             var retorno = Newtonsoft.Json.JsonConvert.SerializeObject(new { quadra = result.Quadra });
+            return ActionResultUtil.WrapOrNotFound(retorno);
+
+
+            }
+            return NotFound();
         }
 
         [HttpDelete("{id}")]
